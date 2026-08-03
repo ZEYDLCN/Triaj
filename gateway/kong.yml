@@ -1,0 +1,71 @@
+_format_version: "3.0"
+
+consumers:
+  - username: konsol
+    keyauth_credentials:
+      - key: triaj-demo-key
+  - username: entegrasyon
+    keyauth_credentials:
+      - key: triaj-partner-key
+
+services:
+  # ---- Triyaj API'si: kimlik doğrulamalı, kotalı ----
+  - name: triaj-api
+    url: http://api:8000
+    retries: 2
+    connect_timeout: 3000
+    read_timeout: 60000
+    routes:
+      - name: r-api
+        paths: ["/v1"]
+        strip_path: false
+      - name: r-events          # SSE: buffering kapalı olmalı
+        paths: ["/events"]
+        strip_path: false
+    plugins:
+      - name: key-auth
+        config:
+          key_names: ["x-api-key"]
+          hide_credentials: true
+      - name: rate-limiting
+        config:
+          minute: 120
+          hour: 3000
+          policy: redis            # sayaçlar Redis'te -> yatay ölçeklenir
+          redis:
+            host: redis
+            port: 6379
+            database: 1
+          fault_tolerant: true
+          hide_client_headers: false
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 1  # MB
+      - name: request-termination
+        enabled: false             # bakım moduna almak için enabled: true
+
+  # ---- Dashboard (statik) ----
+  - name: triaj-web
+    url: http://web:80
+    routes:
+      - name: r-web
+        paths: ["/"]
+
+  # ---- Sağlık ucu: anahtar istemez ----
+  - name: triaj-health
+    url: http://api:8000/health
+    routes:
+      - name: r-health
+        paths: ["/health"]
+        strip_path: true
+
+plugins:
+  - name: correlation-id
+    config:
+      header_name: x-request-id
+      echo_downstream: true
+  - name: cors
+    config:
+      origins: ["*"]
+      headers: ["Content-Type", "x-api-key"]
+      methods: ["GET", "POST", "OPTIONS"]

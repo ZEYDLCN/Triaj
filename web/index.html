@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triaj — destek talebi sevk panosu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#DFE3E9; --card:#FFFFFF; --ink:#131A2A; --muted:#5C6779;
+    --line:#C6CCD6; --accent:#2B31C8; --cache:#6E3FD1;
+    --p1:#B3261E; --p2:#B5651D; --p3:#1F6F63; --p4:#6B7280;
+    --r:3px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--paper); color:var(--ink);
+    font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;
+    display:flex; flex-direction:column;
+  }
+  .mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+  h1,h2,h3{font-family:"Bricolage Grotesque",sans-serif;margin:0;letter-spacing:-.02em}
+  button,input,select,textarea{font:inherit;color:inherit}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---- üst şerit ---- */
+  header{
+    display:flex;align-items:baseline;gap:28px;flex-wrap:wrap;
+    padding:14px 22px;background:var(--ink);color:#F2F4F8;
+  }
+  header h1{font-size:19px;font-weight:800;letter-spacing:-.04em}
+  header h1 span{color:#8E9BFF}
+  .gauges{display:flex;gap:26px;margin-left:auto;flex-wrap:wrap}
+  .gauge{display:flex;flex-direction:column;gap:1px}
+  .gauge b{font-family:"IBM Plex Mono",monospace;font-size:18px;font-weight:500;line-height:1}
+  .gauge small{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#93A0B5}
+  .dot{width:7px;height:7px;border-radius:50%;background:#4E5A70;display:inline-block;margin-right:6px}
+  .dot.on{background:#5BD8A6}
+
+  main{flex:1;display:grid;grid-template-columns:326px 1fr;min-height:0}
+
+  /* ---- sol ray ---- */
+  .rail{border-right:1px solid var(--line);padding:20px;overflow:auto;background:#E9ECF1}
+  .rail h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:700;margin-bottom:10px}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
+  textarea,input,select{
+    width:100%;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--r);padding:9px 10px;
+  }
+  textarea{min-height:104px;resize:vertical}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  button.send{
+    width:100%;margin-top:14px;background:var(--accent);color:#fff;border:0;
+    border-radius:var(--r);padding:11px;font-weight:600;cursor:pointer;
+  }
+  button.send:hover{background:#232AA8}
+  button.send:disabled{background:#8A90C9;cursor:progress}
+  .seed{width:100%;margin-top:8px;background:transparent;border:1px dashed var(--line);
+        border-radius:var(--r);padding:8px;color:var(--muted);cursor:pointer}
+  .seed:hover{border-color:var(--accent);color:var(--accent)}
+
+  .pending{margin-top:26px}
+  .pending li{
+    list-style:none;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+    border-radius:var(--r);padding:8px 10px;margin-bottom:6px;font-size:13px;
+    display:flex;gap:8px;align-items:center;
+  }
+  .spin{width:9px;height:9px;border:2px solid var(--accent);border-top-color:transparent;
+        border-radius:50%;animation:sp .7s linear infinite;flex:none}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .empty{color:var(--muted);font-size:13px;border:1px dashed var(--line);border-radius:var(--r);padding:14px}
+
+  /* ---- şeritler ---- */
+  .lanes{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);min-height:0}
+  .lane{background:var(--paper);display:flex;flex-direction:column;min-height:0}
+  .lane-head{padding:12px 14px 10px;border-bottom:1px solid var(--line);background:#EAEDF2}
+  .lane-head .t{display:flex;align-items:baseline;gap:8px}
+  .lane-head h3{font-size:15px;font-weight:700}
+  .lane-head p{margin:2px 0 8px;font-size:11px;color:var(--muted)}
+  .count{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--muted)}
+  .load{height:3px;background:var(--line);border-radius:2px;overflow:hidden}
+  .load i{display:block;height:100%;width:0;transition:width .4s ease}
+  .stack{padding:12px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+
+  /* ---- kart ---- */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    padding:0 0 11px;animation:in .32s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes in{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
+  /* imza öğesi: kartın tepesindeki "geliş yolu" şeridi */
+  .route{
+    display:flex;align-items:center;gap:7px;padding:6px 11px;border-bottom:1px solid #EEF0F4;
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.04em;
+  }
+  .route .bar{flex:none;width:34px;height:3px;border-radius:2px}
+  .route.model .bar{background:var(--accent)}
+  .route.cache .bar{background:repeating-linear-gradient(90deg,var(--cache) 0 4px,transparent 4px 7px)}
+  .route.model{color:var(--accent)}
+  .route.cache{color:var(--cache)}
+  .route .ms{margin-left:auto;color:var(--muted)}
+  .body{padding:10px 11px 0}
+  .body .txt{font-size:13.5px;margin:0 0 8px}
+  .body .sum{font-size:12px;color:var(--muted);margin:0 0 9px}
+  .tags{display:flex;flex-wrap:wrap;gap:5px}
+  .tag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:2px 6px;
+       border:1px solid var(--line);border-radius:2px;color:var(--muted)}
+  .tag.human{border-color:var(--p1);color:var(--p1)}
+  .tag.ofkeli{border-color:var(--p2);color:var(--p2)}
+  details{margin:9px 11px 0;font-size:12.5px}
+  summary{cursor:pointer;color:var(--accent);font-size:12px}
+  details p{background:#F5F6FA;border-radius:var(--r);padding:9px;margin:7px 0 0;color:#2A3348}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--r);font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.on{opacity:1}
+
+  @media (max-width:900px){
+    main{grid-template-columns:1fr}
+    .rail{border-right:0;border-bottom:1px solid var(--line)}
+    .lanes{grid-template-columns:repeat(4,minmax(240px,1fr));overflow-x:auto}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TRIAJ<span>/</span>SEVK PANOSU</h1>
+  <div class="gauges">
+    <div class="gauge"><b id="g-queue">0</b><small>kuyrukta</small></div>
+    <div class="gauge"><b id="g-hit">%0</b><small>cache isabeti</small></div>
+    <div class="gauge"><b id="g-lat">—</b><small>medyan gecikme</small></div>
+    <div class="gauge"><b class="mono" style="font-size:13px"><span class="dot" id="g-dot"></span><span id="g-conn">bağlanıyor</span></b><small>canlı akış</small></div>
+  </div>
+</header>
+
+<main>
+  <section class="rail">
+    <h2>Talep gönder</h2>
+    <label for="key">API anahtarı</label>
+    <input id="key" class="mono" placeholder="triaj-demo-key" autocomplete="off">
+    <label for="text">Müşteri mesajı</label>
+    <textarea id="text" placeholder="Örn: Kartımdan iki kez çekim yapılmış, acilen iade edilmesini istiyorum."></textarea>
+    <div class="row">
+      <div>
+        <label for="channel">Kanal</label>
+        <select id="channel"><option>form</option><option>email</option><option>chat</option><option>telefon</option></select>
+      </div>
+      <div>
+        <label for="tier">Segment</label>
+        <select id="tier"><option>standart</option><option>plus</option><option>kurumsal</option></select>
+      </div>
+    </div>
+    <button class="send" id="send">Triyaja gönder</button>
+    <button class="seed" id="seed">Örnek talep doldur</button>
+
+    <div class="pending">
+      <h2>İşleniyor</h2>
+      <ul id="pending"><li class="empty" style="border-left:0">Kuyruk boş. Gönderilen talepler model yanıtı gelene kadar burada bekler.</li></ul>
+    </div>
+  </section>
+
+  <section class="lanes" id="lanes"></section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LANES = [
+  {id:"P1", name:"P1 — Acil", desc:"Para kaybı, güvenlik, yasal risk", color:"var(--p1)"},
+  {id:"P2", name:"P2 — Engelli", desc:"Müşteri işlemini tamamlayamıyor", color:"var(--p2)"},
+  {id:"P3", name:"P3 — Normal", desc:"Standart operasyon akışı", color:"var(--p3)"},
+  {id:"P4", name:"P4 — Bilgi", desc:"Soru ve geri bildirim", color:"var(--p4)"},
+];
+const SAMPLES = [
+  "Kartımdan 1249 TL iki kez çekilmiş, hiç ikinci sipariş vermedim. Acilen iade edin.",
+  "9 gündür kargom hareket etmiyor, takip numarası 4820193344. Ne zaman teslim edilecek?",
+  "Kablosuz kulaklık kutudan arızalı çıktı, hiç açılmıyor. Garanti kapsamında mı?",
+  "YAZ25 indirim kodu sepette çalışmıyor, sebebini öğrenebilir miyim?",
+  "Destek ekibiniz çok hızlı dönüş yaptı, teşekkür etmek istedim.",
+];
+
+const $ = s => document.querySelector(s);
+const counts = {P1:0,P2:0,P3:0,P4:0};
+const latencies = [];
+const seen = new Set();
+
+// şeritleri kur
+$("#lanes").innerHTML = LANES.map(l => `
+  <div class="lane">
+    <div class="lane-head">
+      <div class="t"><h3 style="color:${l.color}">${l.name}</h3><span class="count" id="c-${l.id}">0</span></div>
+      <p>${l.desc}</p>
+      <div class="load"><i id="l-${l.id}" style="background:${l.color}"></i></div>
+    </div>
+    <div class="stack" id="s-${l.id}"></div>
+  </div>`).join("");
+
+// api anahtarı
+const key = () => $("#key").value.trim() || "triaj-demo-key";
+$("#key").value = localStorage.getItem("triaj-key") || "triaj-demo-key";
+$("#key").addEventListener("change", e => { localStorage.setItem("triaj-key", e.target.value.trim()); connect(); });
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),2600); }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderPending(){
+  const ul = $("#pending");
+  const items = [...ul.querySelectorAll("li[data-id]")];
+  if(!items.length) ul.innerHTML = `<li class="empty" style="border-left:0">Kuyruk boş. Gönderilen talepler model yanıtı gelene kadar burada bekler.</li>`;
+}
+
+function addPending(rec){
+  const ul = $("#pending");
+  ul.querySelector(".empty")?.remove();
+  const li = document.createElement("li");
+  li.dataset.id = rec.ticket_id;
+  li.innerHTML = `<span class="spin"></span><span class="mono">${rec.ticket_id}</span>
+                  <span style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(rec.text.slice(0,34))}…</span>`;
+  ul.prepend(li);
+}
+
+function place(rec){
+  if(seen.has(rec.ticket_id) || rec.status !== "done") return;
+  seen.add(rec.ticket_id);
+  document.querySelector(`li[data-id="${rec.ticket_id}"]`)?.remove();
+  renderPending();
+
+  const t = rec.triage, lane = counts[t.priority] !== undefined ? t.priority : "P3";
+  const cached = rec.source === "cache";
+  const card = document.createElement("article");
+  card.className = "card";
+  card.innerHTML = `
+    <div class="route ${cached ? "cache" : "model"}">
+      <span class="bar"></span>
+      <span>${cached ? `cache · %${(rec.similarity*100).toFixed(1)} benzerlik` : "model · qlora"}</span>
+      <span class="ms">${rec.latency_ms} ms</span>
+    </div>
+    <div class="body">
+      <p class="txt">${esc(rec.text)}</p>
+      <p class="sum">${esc(t.summary)}</p>
+      <div class="tags">
+        <span class="tag">${esc(t.category)}</span>
+        <span class="tag ${t.sentiment === "ofkeli" ? "ofkeli" : ""}">${esc(t.sentiment)}</span>
+        <span class="tag">${esc(rec.channel)}</span>
+        ${t.needs_human ? '<span class="tag human">insana devret</span>' : ""}
+      </div>
+    </div>
+    <details><summary>Yanıt taslağını aç</summary><p>${esc(t.draft_reply)}</p></details>`;
+  $("#s-"+lane).prepend(card);
+
+  counts[lane]++;
+  const total = Object.values(counts).reduce((a,b)=>a+b,0) || 1;
+  for(const l of LANES){
+    $("#c-"+l.id).textContent = counts[l.id];
+    $("#l-"+l.id).style.width = (counts[l.id]/total*100) + "%";
+  }
+  latencies.push(rec.latency_ms);
+  latencies.sort((a,b)=>a-b);
+  $("#g-lat").textContent = latencies[Math.floor(latencies.length/2)] + " ms";
+}
+
+async function send(){
+  const text = $("#text").value.trim();
+  if(text.length < 5) return toast("Mesaj en az 5 karakter olmalı.");
+  const btn = $("#send"); btn.disabled = true; btn.textContent = "Gönderiliyor…";
+  try{
+    const res = await fetch("/v1/tickets", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":key()},
+      body: JSON.stringify({text, channel:$("#channel").value, customer_tier:$("#tier").value}),
+    });
+    if(res.status === 401) return toast("API anahtarı geçersiz. Gateway talebi reddetti.");
+    if(res.status === 429) return toast("Kota doldu. Dakikalık istek sınırına takıldın.");
+    if(!res.ok) return toast("Talep gönderilemedi (HTTP " + res.status + ").");
+    const rec = await res.json();
+    $("#text").value = "";
+    rec.status === "done" ? place(rec) : addPending(rec);
+  }catch{
+    toast("Sunucuya ulaşılamadı.");
+  }finally{
+    btn.disabled = false; btn.textContent = "Triyaja gönder";
+  }
+}
+
+let es;
+function connect(){
+  es?.close();
+  es = new EventSource("/events?x-api-key=" + encodeURIComponent(key()));
+  es.onopen = () => { $("#g-dot").classList.add("on"); $("#g-conn").textContent = "açık"; };
+  es.onerror = () => { $("#g-dot").classList.remove("on"); $("#g-conn").textContent = "kopuk"; };
+  es.onmessage = e => { try{ place(JSON.parse(e.data)); }catch{} };
+}
+
+async function poll(){
+  try{
+    const s = await (await fetch("/v1/stats", {headers:{"x-api-key":key()}})).json();
+    $("#g-queue").textContent = s.queue_depth;
+    $("#g-hit").textContent = "%" + Math.round(s.hit_rate * 100);
+  }catch{}
+}
+
+async function boot(){
+  try{
+    const {items} = await (await fetch("/v1/tickets?limit=40", {headers:{"x-api-key":key()}})).json();
+    items.reverse().forEach(place);
+  }catch{}
+  connect(); poll(); setInterval(poll, 5000);
+}
+
+$("#send").onclick = send;
+$("#seed").onclick = () => { $("#text").value = SAMPLES[Math.floor(Math.random()*SAMPLES.length)]; $("#text").focus(); };
+$("#text").addEventListener("keydown", e => { if(e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); });
+boot();
+</script>
+</body>
+</html>
