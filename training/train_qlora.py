@@ -9,6 +9,28 @@ import argparse
 import json
 import pathlib
 import sys
+import types
+
+# bitsandbytes'ın (sürümden bağımsız olarak) transformers üzerinden tetiklenen
+# import zinciri, kullanmadığımız deneysel triton tabanlı 8-bit kernel kodu
+# yüzünden `triton.ops` modülünü arıyor. Triton 3.x bu modülü kaldırdı (ör.
+# Colab), import patlıyor. NF4 4-bit + paged_adamw_8bit bu koda hiç girmiyor,
+# o yüzden eksikse zararsız bir stub ile geçiştiriyoruz.
+try:
+    import triton.ops  # noqa: F401
+except ModuleNotFoundError:
+    try:
+        import triton
+        perf_stub = types.ModuleType("triton.ops.matmul_perf_model")
+        perf_stub.early_config_prune = lambda *a, **k: []
+        perf_stub.estimate_matmul_time = lambda *a, **k: 0.0
+        ops_stub = types.ModuleType("triton.ops")
+        ops_stub.matmul_perf_model = perf_stub
+        triton.ops = ops_stub
+        sys.modules["triton.ops"] = ops_stub
+        sys.modules["triton.ops.matmul_perf_model"] = perf_stub
+    except ModuleNotFoundError:
+        pass  # triton hiç kurulu değil, bitsandbytes zaten bu yolu denemeyecek
 
 import torch
 from datasets import Dataset
