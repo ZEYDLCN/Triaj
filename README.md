@@ -42,6 +42,12 @@ JSON tutarlılığı ve kategori isabeti düşer.
 
 ## Fine-tuning (QLoRA)
 
+GPU'n yoksa Colab'da ücretsiz T4 ile çalıştır: `training/colab_finetune.ipynb`'i
+[Colab'da aç](https://colab.research.google.com/github/ZEYDLCN/Triaj/blob/claude/proje-gorevleri-b73j2b/training/colab_finetune.ipynb),
+runtime'ı T4 GPU yap ve hücreleri sırayla çalıştır.
+
+Lokalde çalıştırmak istersen:
+
 ```bash
 cd training
 pip install -r requirements.txt
