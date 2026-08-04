@@ -1,0 +1,10 @@
+# Fine-tuning çıktıları ve üretilen veri seti — büyük/üretilebilir, repoya girmesin
+training/output/
+training/data/
+
+# Python
+__pycache__/
+*.pyc
+
+# HF/torch cache kalıntıları (yanlışlıkla lokalde oluşursa)
+.cache/
