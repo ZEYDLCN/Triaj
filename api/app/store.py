@@ -26,8 +26,28 @@ def from_b64(s: str) -> bytes:
     return base64.b64decode(s)
 
 
+async def wait_for_redis(retries: int = 15, delay: float = 2.0) -> None:
+    """Container Redis'e komşu olarak başlasa bile, ağ yolu (bridge/iptables)
+    ilk milisaniyelerde henüz oturmamış olabilir. Sabit çökmek yerine birkaç
+    kez dene."""
+    import asyncio
+
+    import redis.exceptions
+
+    r = client()
+    for attempt in range(1, retries + 1):
+        try:
+            await r.ping()
+            return
+        except redis.exceptions.ConnectionError as e:
+            print(f"[api] redis'e bağlanılamadı ({attempt}/{retries}): {e}")
+            await asyncio.sleep(delay)
+    raise redis.exceptions.ConnectionError(f"Redis {retries} denemeden sonra hâlâ erişilemez durumda")
+
+
 async def ensure_schema() -> None:
     """Vektör indeksi ve consumer group'u idempotent şekilde kurar."""
+    await wait_for_redis()
     r = client()
     try:
         await r.ft(Keys.CACHE_IDX).create_index(

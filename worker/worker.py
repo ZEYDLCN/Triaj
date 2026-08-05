@@ -71,7 +71,22 @@ def handle(fields: dict) -> None:
     print(f"[worker] {tid} -> {status} ({latency} ms)")
 
 
+def wait_for_redis(retries: int = 15, delay: float = 2.0) -> None:
+    """Container Redis'e komşu olarak başlasa bile, ağ yolu (bridge/iptables)
+    ilk milisaniyelerde henüz oturmamış olabilir. Sabit çökmek yerine birkaç
+    kez dene."""
+    for attempt in range(1, retries + 1):
+        try:
+            r.ping()
+            return
+        except redis.ConnectionError as e:
+            print(f"[worker] redis'e bağlanılamadı ({attempt}/{retries}): {e}")
+            time.sleep(delay)
+    raise redis.ConnectionError(f"Redis {retries} denemeden sonra hâlâ erişilemez durumda")
+
+
 def main() -> None:
+    wait_for_redis()
     ensure_group()
     model.load()
     print(f"[worker] {CONSUMER} hazır, kuyruk dinleniyor…")
